@@ -39,8 +39,20 @@ def webhook():
 
     try:
 
-        comment = data['entry'][0]['changes'][0]['value']['text']
-        comment_id = data['entry'][0]['changes'][0]['value']['id']
+        value = data['entry'][0]['changes'][0]['value']
+
+        comment = (
+            value.get('text') or
+            value.get('comment') or
+            value.get('message') or
+            ""
+        )
+
+        comment_id = value.get('id')
+
+        # sadece mention varsa cevap ver
+        if "@yapaycevapla" not in comment.lower():
+            return "ok"
 
         ai = client.chat.completions.create(
 
@@ -51,7 +63,9 @@ def webhook():
                 {
                     "role":"system",
                     "content":
-                    "Türkçe cevap veren yardımcı bir yapay zeka botsun."
+                    "Sen YapayCevapla AI botusun. "
+                    "Türkçe cevap ver. "
+                    "Kibar, profesyonel ve kısa cevaplar ver."
                 },
 
                 {
@@ -69,7 +83,7 @@ def webhook():
 
             f"https://graph.facebook.com/v19.0/{comment_id}/replies",
 
-            data={
+            json={
 
                 "message":answer,
                 "access_token":INSTAGRAM_TOKEN
@@ -80,6 +94,6 @@ def webhook():
 
     except Exception as e:
 
-        print(e)
+        print("ERROR:",e)
 
     return "ok"
