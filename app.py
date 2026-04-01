@@ -10,9 +10,13 @@ INSTAGRAM_TOKEN = os.environ.get("INSTAGRAM_TOKEN")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-@app.route("/", methods=["GET"])
+VERIFY_TOKEN = "yapaycevapla123"
+
+@app.route("/webhook", methods=["GET"])
 def verify():
-    return "Bot aktif"
+    if request.args.get("hub.verify_token") == VERIFY_TOKEN:
+        return request.args.get("hub.challenge")
+    return "Verification failed"
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -26,7 +30,7 @@ def webhook():
         response = client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=[
-                {"role":"system","content":"Sen YapayCevapla AI botusun. Türkçe cevap ver. Kibar ve bilgili ol."},
+                {"role":"system","content":"Sen YapayCevapla AI botusun. Türkçe cevap ver. Kibar, profesyonel ve yardımcı ol."},
                 {"role":"user","content":comment}
             ]
         )
@@ -40,8 +44,8 @@ def webhook():
             "access_token":INSTAGRAM_TOKEN
         })
 
-    except:
-        pass
+    except Exception as e:
+        print(e)
 
     return "ok"
 
