@@ -37,7 +37,7 @@ def webhook():
         comment = data['entry'][0]['changes'][0]['value']['text']
         comment_id = data['entry'][0]['changes'][0]['value']['id']
 
-        response = openai.ChatCompletion.create(
+        response = openai.chat.completions.create(
             model="gpt-4.1-mini",
             messages=[
                 {
@@ -54,7 +54,7 @@ def webhook():
             ]
         )
 
-        answer = response['choices'][0]['message']['content']
+        answer = response.choices[0].message.content
 
         url = f"https://graph.facebook.com/v19.0/{comment_id}/replies"
 
