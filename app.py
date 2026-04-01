@@ -40,6 +40,8 @@ def webhook():
     try:
 
         value = data['entry'][0]['changes'][0]['value']
+        
+        print("DATA GELDI:", value)
 
         comment = (
             value.get('text') or
