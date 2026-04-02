@@ -17,7 +17,7 @@ def home():
 @app.route("/webhook", methods=["GET","POST"])
 def webhook():
 
-    # VERIFY
+    # WEBHOOK VERIFY
     if request.method == "GET":
 
         token = request.args.get("hub.verify_token")
@@ -38,33 +38,35 @@ def webhook():
 
         try:
 
-            value = data["entry"][0]["changes"][0]["value"]
+            change = data["entry"][0]["changes"][0]["value"]
 
-            comment = value.get("text","")
-            comment_id = value.get("id")
+            comment_text = change.get("text","")
 
-            print("COMMENT:",comment)
+            # gerçek yorum id
+            comment_id = change.get("comment_id") or change.get("id")
+
+            print("COMMENT:",comment_text)
             print("COMMENT ID:",comment_id)
 
             # mention yoksa cevap verme
-            if "@yapaycevapla" not in comment.lower():
+            if "@yapaycevapla" not in comment_text.lower():
                 return "ok"
 
             # reply gönder
-            r = requests.post(
+            response = requests.post(
 
                 f"https://graph.facebook.com/v19.0/{comment_id}/replies",
 
                 params={
 
-                    "message":"Bot cevap test 🚀",
+                    "message":"Merhaba 👋 YapayCevapla bot aktif.",
                     "access_token":PAGE_TOKEN
 
                 }
 
             )
 
-            print("REPLY STATUS:",r.text)
+            print("REPLY STATUS:",response.text)
 
         except Exception as e:
 
