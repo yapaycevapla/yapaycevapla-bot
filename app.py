@@ -32,11 +32,13 @@ def webhook():
 
             print("DATA:",data)
 
-            change = data["entry"][0]["changes"][0]["value"]
+            value = data["entry"][0]["changes"][0]["value"]
 
-            comment_id = change["id"]
+            comment_id = value["id"]
 
-            url = f"https://graph.facebook.com/v19.0/{comment_id}/replies"
+            print("COMMENT ID:",comment_id)
+
+            reply_url = f"https://graph.facebook.com/v19.0/{comment_id}/replies"
 
             payload = {
 
@@ -45,9 +47,9 @@ def webhook():
 
             }
 
-            r = requests.post(url,data=payload)
+            response = requests.post(reply_url,data=payload)
 
-            print("REPLY:",r.text)
+            print("REPLY STATUS:",response.text)
 
         except Exception as e:
 
