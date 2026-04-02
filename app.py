@@ -1,101 +1,32 @@
 from flask import Flask, request
-import requests
 import os
-from openai import OpenAI
 
 app = Flask(__name__)
 
-client = OpenAI(
-    api_key=os.environ.get("OPENAI_API_KEY")
-)
-
-INSTAGRAM_TOKEN = os.environ.get("INSTAGRAM_TOKEN")
-
 VERIFY_TOKEN = "yapaycevapla123"
-
 
 @app.route("/")
 def home():
     return "Bot aktif"
 
-
-@app.route("/webhook", methods=["GET"])
-def verify():
-
-    mode = request.args.get("hub.mode")
-    token = request.args.get("hub.verify_token")
-    challenge = request.args.get("hub.challenge")
-
-    if mode == "subscribe" and token == VERIFY_TOKEN:
-        return challenge
-
-    return "fail"
-
-
-@app.route("/webhook", methods=["POST"])
+@app.route("/webhook", methods=["GET","POST"])
 def webhook():
 
-    data = request.json
+    if request.method == "GET":
 
-    try:
+        token = request.args.get("hub.verify_token")
+        challenge = request.args.get("hub.challenge")
 
-        value = data['entry'][0]['changes'][0]['value']
-        
-        print("DATA GELDI:", value)
+        if token == VERIFY_TOKEN:
+            return challenge
+        else:
+            return "fail"
 
-        comment = (
-            value.get('text') or
-            value.get('comment') or
-            value.get('message') or
-            ""
-        )
+    if request.method == "POST":
 
-        comment_id = value.get('id')
+        data = request.json
+        print("WEBHOOK GELDİ:", data)
 
-        # sadece mention varsa cevap ver
-        if "@yapaycevapla" not in comment.lower():
-            return "ok"
+        return "ok"
 
-        ai = client.chat.completions.create(
-
-            model="gpt-4.1-mini",
-
-            messages=[
-
-                {
-                    "role":"system",
-                    "content":
-                    "Sen YapayCevapla AI botusun. "
-                    "Türkçe cevap ver. "
-                    "Kibar, profesyonel ve kısa cevaplar ver."
-                },
-
-                {
-                    "role":"user",
-                    "content":comment
-                }
-
-            ]
-
-        )
-
-        answer = ai.choices[0].message.content
-
-        requests.post(
-
-            f"https://graph.facebook.com/v19.0/{comment_id}/replies",
-
-            json={
-
-                "message":answer,
-                "access_token":INSTAGRAM_TOKEN
-
-            }
-
-        )
-
-    except Exception as e:
-
-        print("ERROR:",e)
-
-    return "ok"
+app.run(host="0.0.0.0",port=8080)
