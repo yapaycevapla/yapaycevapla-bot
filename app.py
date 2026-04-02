@@ -17,7 +17,7 @@ def home():
 @app.route("/webhook", methods=["GET","POST"])
 def webhook():
 
-    # WEBHOOK VERIFY
+    # VERIFY
     if request.method == "GET":
 
         token = request.args.get("hub.verify_token")
@@ -42,7 +42,7 @@ def webhook():
 
             comment_text = change.get("text","")
 
-            # gerçek yorum id
+            # doğru comment id
             comment_id = change.get("comment_id") or change.get("id")
 
             print("COMMENT:",comment_text)
@@ -57,9 +57,9 @@ def webhook():
 
                 f"https://graph.facebook.com/v19.0/{comment_id}/replies",
 
-                params={
+                json={
 
-                    "message":"Merhaba 👋 YapayCevapla bot aktif.",
+                    "message":"Merhaba 👋 YapayCevapla aktif.",
                     "access_token":PAGE_TOKEN
 
                 }
