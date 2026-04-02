@@ -47,18 +47,20 @@ def webhook():
             print("COMMENT ID:",comment_id)
 
             # TEST için her yoruma cevap
-            response = requests.post(
+      response = requests.post(
 
-                f"https://graph.facebook.com/v19.0/{comment_id}/replies",
+    f"https://graph.facebook.com/v19.0/{comment_id}",
 
-                json={
-                    "message":"Bot aktif 🚀",
-                    "access_token":PAGE_TOKEN
-                }
+    json={
 
-            )
+        "message":"Bot aktif 🚀",
+        "access_token":PAGE_TOKEN
 
-            print("REPLY STATUS:",response.text)
+    }
+
+)
+
+print("REPLY STATUS:",response.text)
 
         except Exception as e:
 
