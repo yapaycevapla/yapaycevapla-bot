@@ -5,7 +5,6 @@ import os
 app = Flask(__name__)
 
 PAGE_TOKEN = os.getenv("PAGE_ACCESS_TOKEN")
-
 VERIFY_TOKEN = "yapaycevapla123"
 
 
@@ -17,50 +16,40 @@ def home():
 @app.route("/webhook", methods=["GET","POST"])
 def webhook():
 
-    # VERIFY
     if request.method == "GET":
 
         token = request.args.get("hub.verify_token")
         challenge = request.args.get("hub.challenge")
 
         if token == VERIFY_TOKEN:
-            return challenge, 200
+            return challenge
 
-        return "fail", 403
+        return "fail"
 
 
-    # COMMENT EVENT
     if request.method == "POST":
 
         data = request.json
-
-        print("DATA:",data)
+        print(data)
 
         try:
 
             change = data["entry"][0]["changes"][0]["value"]
 
-            comment_text = change.get("text","")
-            comment_id = change.get("id")
+            comment_id = change["id"]
 
-            print("COMMENT:",comment_text)
             print("COMMENT ID:",comment_id)
 
-            # TEST için her yoruma cevap
-      response = requests.post(
+            url = f"https://graph.facebook.com/v19.0/{comment_id}/replies"
 
-    f"https://graph.facebook.com/v19.0/{comment_id}",
+            payload = {
+                "message":"Bot aktif 🚀",
+                "access_token":PAGE_TOKEN
+            }
 
-    json={
+            r = requests.post(url,data=payload)
 
-        "message":"Bot aktif 🚀",
-        "access_token":PAGE_TOKEN
-
-    }
-
-)
-
-print("REPLY STATUS:",response.text)
+            print("REPLY:",r.text)
 
         except Exception as e:
 
@@ -69,11 +58,6 @@ print("REPLY STATUS:",response.text)
         return "ok"
 
 
-if __name__ == "__main__":
+port = int(os.environ.get("PORT",8080))
 
-    port = int(os.environ.get("PORT",8080))
-
-    app.run(
-        host="0.0.0.0",
-        port=port
-    )
+app.run(host="0.0.0.0",port=port)
