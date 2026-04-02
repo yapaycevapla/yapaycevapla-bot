@@ -5,7 +5,7 @@ app = Flask(__name__)
 
 VERIFY_TOKEN = "yapaycevapla123"
 
-@app.route("/")
+@app.route("/", methods=["GET"])
 def home():
     return "Bot aktif"
 
@@ -13,20 +13,22 @@ def home():
 def webhook():
 
     if request.method == "GET":
-
-        token = request.args.get("hub.verify_token")
+        verify_token = request.args.get("hub.verify_token")
         challenge = request.args.get("hub.challenge")
 
-        if token == VERIFY_TOKEN:
-            return challenge
-        else:
-            return "fail"
+        if verify_token == VERIFY_TOKEN:
+            return challenge, 200
+        return "fail", 403
 
     if request.method == "POST":
+        data = request.get_json()
 
-        data = request.json
-        print("WEBHOOK GELDİ:", data)
+        print("WEBHOOK GELDİ:")
+        print(data)
 
-        return "ok"
+        return "ok", 200
 
-app.run(host="0.0.0.0",port=8080)
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT",8080))
+    app.run(host="0.0.0.0", port=port)
