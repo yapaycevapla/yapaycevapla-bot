@@ -1,34 +1,42 @@
 from flask import Flask, request
+import requests
 import os
 
 app = Flask(__name__)
 
-VERIFY_TOKEN = "yapaycevapla123"
+TOKEN = os.getenv("PAGE_ACCESS_TOKEN")
 
-@app.route("/", methods=["GET"])
+@app.route("/")
 def home():
-    return "Bot aktif"
+    return "bot aktif"
 
 @app.route("/webhook", methods=["GET","POST"])
 def webhook():
 
     if request.method == "GET":
-        verify_token = request.args.get("hub.verify_token")
-        challenge = request.args.get("hub.challenge")
-
-        if verify_token == VERIFY_TOKEN:
-            return challenge, 200
-        return "fail", 403
+        if request.args.get("hub.verify_token") == "yapaycevapla123":
+            return request.args.get("hub.challenge")
+        return "fail"
 
     if request.method == "POST":
-        data = request.get_json()
 
-        print("WEBHOOK GELDİ:")
+        data = request.json
         print(data)
 
-        return "ok", 200
+        try:
+            comment_id = data["entry"][0]["changes"][0]["value"]["id"]
 
+            requests.post(
+                f"https://graph.facebook.com/v25.0/{comment_id}/replies",
+                params={
+                    "message":"Test cevap",
+                    "access_token":TOKEN
+                }
+            )
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT",8080))
-    app.run(host="0.0.0.0", port=port)
+        except Exception as e:
+            print(e)
+
+        return "ok"
+
+app.run(host="0.0.0.0",port=8080)
