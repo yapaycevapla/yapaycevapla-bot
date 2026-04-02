@@ -41,27 +41,19 @@ def webhook():
             change = data["entry"][0]["changes"][0]["value"]
 
             comment_text = change.get("text","")
-
-            # doğru comment id
-            comment_id = change.get("comment_id") or change.get("id")
+            comment_id = change.get("id")
 
             print("COMMENT:",comment_text)
             print("COMMENT ID:",comment_id)
 
-            # mention yoksa cevap verme
-            if "@yapaycevapla" not in comment_text.lower():
-                return "ok"
-
-            # reply gönder
+            # TEST için her yoruma cevap
             response = requests.post(
 
                 f"https://graph.facebook.com/v19.0/{comment_id}/replies",
 
                 json={
-
-                    "message":"Merhaba 👋 YapayCevapla aktif.",
+                    "message":"Bot aktif 🚀",
                     "access_token":PAGE_TOKEN
-
                 }
 
             )
