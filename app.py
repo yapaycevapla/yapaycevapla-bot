@@ -44,24 +44,27 @@ def webhook():
             comment_id = value.get("id")
 
             print("COMMENT:",comment)
+            print("COMMENT ID:",comment_id)
 
             # mention yoksa cevap verme
             if "@yapaycevapla" not in comment.lower():
                 return "ok"
 
-            # BOT CEVABI
-            requests.post(
+            # reply gönder
+            r = requests.post(
 
-                f"https://graph.facebook.com/v25.0/{comment_id}/replies",
+                f"https://graph.facebook.com/v19.0/{comment_id}/replies",
 
                 params={
 
-                    "message":"Merhaba 👋 YapayCevapla bot aktif.",
+                    "message":"Bot cevap test 🚀",
                     "access_token":PAGE_TOKEN
 
                 }
 
             )
+
+            print("REPLY STATUS:",r.text)
 
         except Exception as e:
 
