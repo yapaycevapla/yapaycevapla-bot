@@ -18,33 +18,31 @@ def webhook():
 
     if request.method == "GET":
 
-        token = request.args.get("hub.verify_token")
-        challenge = request.args.get("hub.challenge")
-
-        if token == VERIFY_TOKEN:
-            return challenge
+        if request.args.get("hub.verify_token") == VERIFY_TOKEN:
+            return request.args.get("hub.challenge")
 
         return "fail"
 
 
     if request.method == "POST":
 
-        data = request.json
-        print(data)
-
         try:
+
+            data = request.get_json()
+
+            print("DATA:",data)
 
             change = data["entry"][0]["changes"][0]["value"]
 
             comment_id = change["id"]
 
-            print("COMMENT ID:",comment_id)
-
             url = f"https://graph.facebook.com/v19.0/{comment_id}/replies"
 
             payload = {
+
                 "message":"Bot aktif 🚀",
                 "access_token":PAGE_TOKEN
+
             }
 
             r = requests.post(url,data=payload)
@@ -56,8 +54,3 @@ def webhook():
             print("ERROR:",e)
 
         return "ok"
-
-
-port = int(os.environ.get("PORT",8080))
-
-app.run(host="0.0.0.0",port=port)
