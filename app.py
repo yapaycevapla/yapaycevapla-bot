@@ -1,15 +1,21 @@
 from flask import Flask, request
 import requests
 import os
+from openai import OpenAI
 
 app = Flask(__name__)
 
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 PAGE_TOKEN = os.getenv("PAGE_ACCESS_TOKEN")
+OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+
+client = OpenAI(api_key=OPENAI_KEY)
+
 
 @app.route("/")
 def home():
-    return "bot aktif"
+    return "AI bot aktif"
+
 
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -25,31 +31,65 @@ def webhook():
 
     data = request.json
 
-    print("DATA:",data)
-
     try:
 
-        change = data["entry"][0]["changes"][0]["value"]
+        value = data["entry"][0]["changes"][0]["value"]
 
-        comment_id = change["id"]
+        comment_id = value["id"]
 
-        text = change.get("text","")
+        text = value.get("text","")
 
-        print("COMMENT ID:",comment_id)
-        print("TEXT:",text)
+        print("COMMENT:",text)
 
-        message = "Bot aktif 🚀"
 
+        # bot kendi mesajına cevap vermesin
+        if "YapayCevapla" in text:
+            return "ok"
+
+
+        # mention yoksa cevap verme
+        if "@yapaycevapla" not in text.lower():
+            return "ok"
+
+
+        # mentionu temizle
+        question = text.lower().replace("@yapaycevapla","").strip()
+
+
+        # AI cevap üret
+        ai = client.responses.create(
+
+            model="gpt-4.1-mini",
+
+            input=f"""
+Kullanıcı Instagram yorumunda soru soruyor.
+
+Soru:
+{question}
+
+Kısa, anlaşılır, Türkçe cevap ver.
+Maksimum 3 cümle.
+Samimi ama bilgili ton kullan.
+"""
+        )
+
+        answer = ai.output_text
+
+        print("AI:",answer)
+
+
+        # reply gönder
         url = f"https://graph.facebook.com/v19.0/{comment_id}/replies"
 
         payload = {
-            "message":message,
+
+            "message":answer,
             "access_token":PAGE_TOKEN
+
         }
 
-        r = requests.post(url,data=payload)
+        requests.post(url,data=payload)
 
-        print("REPLY STATUS:",r.text)
 
     except Exception as e:
 
