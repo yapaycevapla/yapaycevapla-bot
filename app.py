@@ -6,7 +6,6 @@ app = Flask(__name__)
 
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 PAGE_TOKEN = os.getenv("PAGE_ACCESS_TOKEN")
-print("TOKEN:", PAGE_TOKEN)
 
 @app.route("/")
 def home():
@@ -14,9 +13,12 @@ def home():
 
 @app.route("/webhook", methods=["GET"])
 def verify():
+
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
         return request.args.get("hub.challenge")
+
     return "fail"
+
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -31,11 +33,21 @@ def webhook():
 
         comment_id = change["id"]
 
+        text = change.get("text","")
+
         print("COMMENT ID:",comment_id)
+        print("TEXT:",text)
 
-        url = f"https://graph.facebook.com/v19.0/{comment_id}/replies?message=Bot aktif 🚀&access_token={PAGE_TOKEN}"
+        message = "Bot aktif 🚀"
 
-        r = requests.post(url)
+        url = f"https://graph.facebook.com/v19.0/{comment_id}/replies"
+
+        payload = {
+            "message":message,
+            "access_token":PAGE_TOKEN
+        }
+
+        r = requests.post(url,data=payload)
 
         print("REPLY STATUS:",r.text)
 
