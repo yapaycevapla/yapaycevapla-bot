@@ -6,6 +6,7 @@ app = Flask(__name__)
 
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 PAGE_TOKEN = os.getenv("PAGE_ACCESS_TOKEN")
+print("TOKEN:", PAGE_TOKEN)
 
 @app.route("/")
 def home():
