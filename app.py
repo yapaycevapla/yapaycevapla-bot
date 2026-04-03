@@ -39,10 +39,12 @@ def webhook():
 
         text = value.get("text","")
 
+        media_id = value["media"]["id"]
+
         print("COMMENT:",text)
 
 
-        # bot kendi mesajına cevap vermesin
+        # kendi yorumuna cevap verme
         if "YapayCevapla" in text:
             return "ok"
 
@@ -52,26 +54,85 @@ def webhook():
             return "ok"
 
 
-        # mentionu temizle
-        question = text.lower().replace("@yapaycevapla","").strip()
+        question = text.replace("@yapaycevapla","").strip()
 
 
-        # AI cevap üret
-        ai = client.responses.create(
+        # medya bilgisi çek
+        media_url = ""
 
-            model="gpt-4.1-mini",
+        try:
 
-            input=f"""
-Kullanıcı Instagram yorumunda soru soruyor.
+            media_request = requests.get(
+
+                f"https://graph.facebook.com/v19.0/{media_id}?fields=media_type,media_url,caption&access_token={PAGE_TOKEN}"
+
+            ).json()
+
+            media_url = media_request.get("media_url","")
+
+            caption = media_request.get("caption","")
+
+        except:
+
+            media_url = ""
+            caption = ""
+
+
+        # AI PROMPT
+        prompt = f"""
+
+Instagram yorumunda soru soruldu.
 
 Soru:
 {question}
 
-Kısa, anlaşılır, Türkçe cevap ver.
-Maksimum 3 cümle.
-Samimi ama bilgili ton kullan.
+Post açıklaması:
+{caption}
+
+Eğer soru ciddi ise ciddi cevap ver.
+Eğer soru komik ise mizahi cevap ver.
+
+Kısa cevap ver.
+Türkçe yaz.
 """
-        )
+
+        # Eğer resim varsa AI analiz
+        if media_url != "":
+
+            ai = client.responses.create(
+
+                model="gpt-4.1-mini",
+
+                input=[
+
+                    {
+                        "role":"user",
+                        "content":[
+
+                            {"type":"input_text","text":prompt},
+
+                            {
+                                "type":"input_image",
+                                "image_url":media_url
+                            }
+
+                        ]
+                    }
+
+                ]
+
+            )
+
+        else:
+
+            ai = client.responses.create(
+
+                model="gpt-4.1-mini",
+
+                input=prompt
+
+            )
+
 
         answer = ai.output_text
 
