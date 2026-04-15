@@ -36,124 +36,54 @@ def webhook():
         value = data["entry"][0]["changes"][0]["value"]
 
         comment_id = value["id"]
+        text = value.get("text", "")
 
-        text = value.get("text","")
-
-        media_id = value["media"]["id"]
-
-        print("COMMENT:",text)
-
+        print("COMMENT:", text)
+        print("COMMENT ID:", comment_id)
 
         # kendi yorumuna cevap verme
         if "YapayCevapla" in text:
             return "ok"
 
-
         # mention yoksa cevap verme
         if "@yapaycevapla" not in text.lower():
             return "ok"
 
+        question = text.replace("@yapaycevapla", "").strip()
 
-        question = text.replace("@yapaycevapla","").strip()
-
-
-        # medya bilgisi çek
-        media_url = ""
-
-        try:
-
-            media_request = requests.get(
-
-                f"https://graph.facebook.com/v19.0/{media_id}?fields=media_type,media_url,caption&access_token={PAGE_TOKEN}"
-
-            ).json()
-
-            media_url = media_request.get("media_url","")
-
-            caption = media_request.get("caption","")
-
-        except:
-
-            media_url = ""
-            caption = ""
-
-
-        # AI PROMPT
-        prompt = f"""
-
-Instagram yorumunda soru soruldu.
+        # AI cevap
+        ai = client.responses.create(
+            model="gpt-4.1-mini",
+            input=f"""
+Kullanıcı Instagram yorumunda soru soruyor.
 
 Soru:
 {question}
 
-Post açıklaması:
-{caption}
-
-Eğer soru ciddi ise ciddi cevap ver.
-Eğer soru komik ise mizahi cevap ver.
-
-Kısa cevap ver.
-Türkçe yaz.
+Kısa, anlaşılır, Türkçe cevap ver.
+Max 2-3 cümle.
 """
-
-        # Eğer resim varsa AI analiz
-        if media_url != "":
-
-            ai = client.responses.create(
-
-                model="gpt-4.1-mini",
-
-                input=[
-
-                    {
-                        "role":"user",
-                        "content":[
-
-                            {"type":"input_text","text":prompt},
-
-                            {
-                                "type":"input_image",
-                                "image_url":media_url
-                            }
-
-                        ]
-                    }
-
-                ]
-
-            )
-
-        else:
-
-            ai = client.responses.create(
-
-                model="gpt-4.1-mini",
-
-                input=prompt
-
-            )
-
+        )
 
         answer = ai.output_text
 
-        print("AI:",answer)
+        print("AI:", answer)
 
-
-        # reply gönder
+        # REPLY GÖNDER
         url = f"https://graph.facebook.com/v19.0/{comment_id}/replies"
 
         payload = {
-
-            "message":answer,
-            "access_token":PAGE_TOKEN
-
+            "message": answer,
+            "access_token": PAGE_TOKEN
         }
 
-        requests.post(url,data=payload)
+        response = requests.post(url, data=payload)
 
+        print("REPLY STATUS:", response.status_code)
+        print("REPLY RESPONSE:", response.text)
 
     except Exception as e:
 
-        print("ERROR:",e)
+        print("ERROR:", e)
 
     return "ok"
