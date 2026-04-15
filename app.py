@@ -11,74 +11,77 @@ OPENAI_KEY = os.getenv("OPENAI_API_KEY")
 
 client = OpenAI(api_key=OPENAI_KEY)
 
-@app.route("/")
-def home():
-    return "AI bot aktif - Mentions & Comments Destekleniyor"
-
-@app.route("/webhook", methods=["GET"])
-def verify():
-    if request.args.get("hub.verify_token") == VERIFY_TOKEN:
-        return request.args.get("hub.challenge")
-    return "fail"
-
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.json
-    # Debug için gelen veriyi loglayalım
-    print("Gelen Data:", data)
+    print("Gelen Ham Data:", data)
 
     try:
         if "entry" in data:
             for entry in data["entry"]:
-                for change in entry.get("changes", []):
-                    field = change.get("field")
-                    value = change.get("value", {})
-                    
-                    # 1. Kendi postundaki yorum mu yoksa başkasının postundaki mention mı?
-                    comment_id = value.get("id")
-                    text = value.get("text", "")
-                    
-                    if not text or not comment_id:
-                        continue
+                # 1. SENARYO: DM veya Hikaye Paylaşımı (Senin logundaki durum)
+                if "messaging" in entry:
+                    for msg_event in entry["messaging"]:
+                        sender_id = msg_event["sender"]["id"]
+                        
+                        # Eğer mesaj metni varsa (veya paylaşılan bir postun başlığı)
+                        message_data = msg_event.get("message", {})
+                        text = message_data.get("text", "")
+                        
+                        # Senin logunda text boş gelebilir çünkü 'attachments' içinde paylaşım var
+                        if not text and "attachments" in message_data:
+                            # Paylaşılan postun title'ını soru olarak alabiliriz
+                            text = message_data["attachments"][0].get("payload", {}).get("title", "")
 
-                    # Kendi botumuzun cevabına cevap vermeyelim
-                    if "YapayCevapla" in text:
-                        continue
+                        if text:
+                            print(f"DM/Share Tespit Edildi: {text}")
+                            handle_response(sender_id, text, is_dm=True)
 
-                    # Mention kontrolü
-                    if "@yapaycevapla" not in text.lower():
-                        continue
+                # 2. SENARYO: Normal Yorumlar ve Mentions (Alt yapıdaki changes yapısı)
+                if "changes" in entry:
+                    for change in entry["changes"]:
+                        value = change.get("value", {})
+                        comment_id = value.get("id")
+                        text = value.get("text", "")
 
-                    print(f"İşleniyor ({field}): {text}")
-
-                    # 2. OpenAI Yanıt Oluşturma
-                    question = text.lower().replace("@yapaycevapla", "").strip()
-                    
-                    completion = client.chat.completions.create(
-                        model="gpt-4o-mini", # Model adını güncelledim
-                        messages=[
-                            {"role": "system", "content": "Sen bir Instagram asistanısın. Kısa, samimi ve Türkçe cevap ver. Max 2 cümle."},
-                            {"role": "user", "content": question}
-                        ]
-                    )
-                    answer = completion.choices[0].message.content
-
-                    # 3. Cevap Gönderme
-                    # Not: Mention veya Comment fark etmeksizin reply/comments endpointi kullanılır
-                    url = f"https://graph.facebook.com/v21.0/{comment_id}/replies"
-                    
-                    payload = {
-                        "message": answer,
-                        "access_token": PAGE_TOKEN
-                    }
-
-                    response = requests.post(url, json=payload)
-                    print(f"Cevap Durumu: {response.status_code}, Yanıt: {response.text}")
+                        if comment_id and text:
+                            print(f"Yorum/Mention Tespit Edildi: {text}")
+                            handle_response(comment_id, text, is_dm=False)
 
     except Exception as e:
         print("Sistem Hatası:", e)
 
     return "ok"
 
-if __name__ == "__main__":
-    app.run(port=5000)
+def handle_response(target_id, user_text, is_dm=False):
+    # Kendi ismimizi içeren mesajlara cevap vermeyelim (sonsuz döngü engelleme)
+    if "YapayCevapla" in user_text:
+        return
+
+    # OpenAI süreci
+    completion = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "Sen samimi bir Instagram asistanısın. Türkçe, kısa ve net cevap ver."},
+            {"role": "user", "content": user_text}
+        ]
+    )
+    answer = completion.choices[0].message.content
+
+    # Cevap Gönderme
+    if is_dm:
+        # DM olarak yanıt dön (Mesaj gönderen kişiye)
+        url = f"https://graph.facebook.com/v21.0/me/messages?access_token={PAGE_TOKEN}"
+        payload = {
+            "recipient": {"id": target_id},
+            "message": {"text": answer}
+        }
+    else:
+        # Yorum olarak yanıt dön
+        url = f"https://graph.facebook.com/v21.0/{target_id}/replies?access_token={PAGE_TOKEN}"
+        payload = {"message": answer}
+
+    res = requests.post(url, json=payload)
+    print(f"Yanıt Gönderildi. Durum: {res.status_code}")
+
+# Flask verify_token kısmı aynı kalacak...
