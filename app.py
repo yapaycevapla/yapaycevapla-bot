@@ -11,79 +11,74 @@ OPENAI_KEY = os.getenv("OPENAI_API_KEY")
 
 client = OpenAI(api_key=OPENAI_KEY)
 
-
 @app.route("/")
 def home():
-    return "AI bot aktif"
-
+    return "AI bot aktif - Mentions & Comments Destekleniyor"
 
 @app.route("/webhook", methods=["GET"])
 def verify():
-
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
         return request.args.get("hub.challenge")
-
     return "fail"
-
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-
     data = request.json
+    # Debug için gelen veriyi loglayalım
+    print("Gelen Data:", data)
 
     try:
+        if "entry" in data:
+            for entry in data["entry"]:
+                for change in entry.get("changes", []):
+                    field = change.get("field")
+                    value = change.get("value", {})
+                    
+                    # 1. Kendi postundaki yorum mu yoksa başkasının postundaki mention mı?
+                    comment_id = value.get("id")
+                    text = value.get("text", "")
+                    
+                    if not text or not comment_id:
+                        continue
 
-        value = data["entry"][0]["changes"][0]["value"]
+                    # Kendi botumuzun cevabına cevap vermeyelim
+                    if "YapayCevapla" in text:
+                        continue
 
-        comment_id = value["id"]
-        text = value.get("text", "")
+                    # Mention kontrolü
+                    if "@yapaycevapla" not in text.lower():
+                        continue
 
-        print("COMMENT:", text)
-        print("COMMENT ID:", comment_id)
+                    print(f"İşleniyor ({field}): {text}")
 
-        # kendi yorumuna cevap verme
-        if "YapayCevapla" in text:
-            return "ok"
+                    # 2. OpenAI Yanıt Oluşturma
+                    question = text.lower().replace("@yapaycevapla", "").strip()
+                    
+                    completion = client.chat.completions.create(
+                        model="gpt-4o-mini", # Model adını güncelledim
+                        messages=[
+                            {"role": "system", "content": "Sen bir Instagram asistanısın. Kısa, samimi ve Türkçe cevap ver. Max 2 cümle."},
+                            {"role": "user", "content": question}
+                        ]
+                    )
+                    answer = completion.choices[0].message.content
 
-        # mention yoksa cevap verme
-        if "@yapaycevapla" not in text.lower():
-            return "ok"
+                    # 3. Cevap Gönderme
+                    # Not: Mention veya Comment fark etmeksizin reply/comments endpointi kullanılır
+                    url = f"https://graph.facebook.com/v21.0/{comment_id}/replies"
+                    
+                    payload = {
+                        "message": answer,
+                        "access_token": PAGE_TOKEN
+                    }
 
-        question = text.replace("@yapaycevapla", "").strip()
-
-        # AI cevap
-        ai = client.responses.create(
-            model="gpt-4.1-mini",
-            input=f"""
-Kullanıcı Instagram yorumunda soru soruyor.
-
-Soru:
-{question}
-
-Kısa, anlaşılır, Türkçe cevap ver.
-Max 2-3 cümle.
-"""
-        )
-
-        answer = ai.output_text
-
-        print("AI:", answer)
-
-        # REPLY GÖNDER
-        url = f"https://graph.facebook.com/v19.0/{comment_id}/replies"
-
-        payload = {
-            "message": answer,
-            "access_token": PAGE_TOKEN
-        }
-
-        response = requests.post(url, data=payload)
-
-        print("REPLY STATUS:", response.status_code)
-        print("REPLY RESPONSE:", response.text)
+                    response = requests.post(url, json=payload)
+                    print(f"Cevap Durumu: {response.status_code}, Yanıt: {response.text}")
 
     except Exception as e:
-
-        print("ERROR:", e)
+        print("Sistem Hatası:", e)
 
     return "ok"
+
+if __name__ == "__main__":
+    app.run(port=5000)
